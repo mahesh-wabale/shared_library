@@ -15,7 +15,6 @@ def call() {
             string(name: 'PYTHON_IMAGE_NAME', defaultValue: 'python-app', description: 'Python Docker Image Name')
             string(name: 'JAVA_NAMESPACE', defaultValue: 'test', description: 'Kubernetes Namespace for Java Application')
             string(name: 'PYTHON_NAMESPACE', defaultValue: 'python', description: 'Kubernetes Namespace for Python Application')
-            string(name: 'VERSION', defaultValue: '1.0.0', description: 'Version number for the build')
         }
 
         stages {
@@ -40,10 +39,10 @@ def call() {
                 parallel {
                     stage('Build and Push Java Image') {
                         steps {
-                            dir('testhello') { // Ensure this directory contains the pom.xml
+                            dir('testhello') {
                                 sh 'mvn clean install'
                                 script {
-                                    def image = docker.build("${params.DOCKERHUB_USERNAME}/${params.JAVA_IMAGE_NAME}:${params.VERSION}")
+                                    def image = docker.build("${params.DOCKERHUB_USERNAME}/${params.JAVA_IMAGE_NAME}:${currentBuild.number}")
                                     docker.withRegistry('', 'dockerhubpwd') {
                                         image.push()
                                     }
@@ -55,7 +54,7 @@ def call() {
                         steps {
                             dir('python-app') {
                                 script {
-                                    def image = docker.build("${params.DOCKERHUB_USERNAME}/${params.PYTHON_IMAGE_NAME}:${params.VERSION}")
+                                    def image = docker.build("${params.DOCKERHUB_USERNAME}/${params.PYTHON_IMAGE_NAME}:${currentBuild.number}")
                                     docker.withRegistry('', 'dockerhubpwd') {
                                         image.push()
                                     }
@@ -74,29 +73,60 @@ def call() {
                 }
             }
 
-            stage('Deploy to Kubernetes') {
-                parallel {
-                    stage('Deploy Java Application') {
-                        steps {
-                            script {
-                                try {
-                                    sh 'kubectl apply -f /var/lib/jenkins/workspace/j-p-project/deploymentservice.yaml'
-                                } catch (Exception e) {
-                                    echo "Deployment failed: ${e.getMessage()}"
-                                    error "Kubernetes deployment ended with HasError"
-                                }
-                            }
-                        }
+            stage('Install yq') {
+                steps {
+                    sh '''
+                        wget https://github.com/mikefarah/yq/releases/download/v4.6.1/yq_linux_amd64 -O "${WORKSPACE}/yq"
+                        chmod +x "${WORKSPACE}/yq"
+                        export PATH="${WORKSPACE}:$PATH"
+                    '''
+                }
+            }
+
+            stage('Build and Package Java Helm Chart') {
+                steps {
+                    dir('testhello') {
+                        sh '''
+                            "${WORKSPACE}/yq" e -i '.image.tag = "latest"' ./myspringbootchart/values.yaml
+                            helm template ./myspringbootchart
+                            helm lint ./myspringbootchart
+                            helm package ./myspringbootchart --version "1.0.0"
+                        '''
                     }
-                    stage('Deploy Python Application') {
-                        steps {
-                            script {
-                                kubernetesDeploy(
-                                    configs: 'deploymentservice.yaml',
-                                    kubeconfigId: 'k8sconfigpwd'
-                                )
-                            }
-                        }
+                }
+            }
+
+            stage('Build and Package Python Helm Chart') {
+                steps {
+                    dir('python-app') {
+                        sh '''
+                            "${WORKSPACE}/yq" e -i '.image.tag = "latest"' ./my-python-app/values.yaml
+                            helm template ./my-python-app
+                            helm lint ./my-python-app
+                            helm package ./my-python-app --version "1.0.0"
+                        '''
+                    }
+                }
+            }
+
+            stage('Deploy Java Application to Kubernetes') {
+                steps {
+                    script {
+                        kubernetesDeploy(
+                            configs: 'Build and Deploy Java and Python Applications',
+                            kubeconfigId: 'kubeconfig1pwd'
+                        )
+                    }
+                }
+            }
+
+            stage('Deploy Python Application to Kubernetes') {
+                steps {
+                    script {
+                        kubernetesDeploy(
+                            configs: 'Build and Deploy Java and Python Applications',
+                            kubeconfigId: 'kubeconfig1pwd'
+                        )
                     }
                 }
             }
@@ -112,7 +142,7 @@ def call() {
 
                     echo "Sending Slack notification to ${slackChannel} with message: ${slackMessage}"
 
-                    slackSend (
+                    slackSend(
                         baseUrl: 'https://yourteam.slack.com/api/',
                         teamDomain: 'StarAppleInfotech',
                         channel: '#builds',
