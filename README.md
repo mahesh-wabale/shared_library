@@ -40,3 +40,4 @@ Go to jenkins dashboard->manage jenkins->System->in system serach the Global Tru
 ![Screenshot from 2024-08-08 10-46-34](https://github.com/user-attachments/assets/da0c55aa-ee71-4dfc-90ee-5bd87d7121f1)
 ![Uploading Screenshot from 2024-08-08 10-50-51.png…]()
 
+## Build the pipeline job
