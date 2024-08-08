@@ -15,6 +15,7 @@ This project demonstrates how to deploy two applications, one Java and one Pytho
 - DockerHub account
 
 ## Repository Structure
+java application is testhello and python is python-app
  .
 ├── java-app
 │ ├── Dockerfile
