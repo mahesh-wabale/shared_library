@@ -1,6 +1,6 @@
 ## TITLE: Deployment of 2 application 1st java and 2nd python with kubernetes cluster using helm with slack alert :
   
-# Java and Python Applications Deployment with Kubernetes using Helm and Slack Alerts
+
 
 ## Description
 This project demonstrates how to deploy two applications, one Java and one Python, on a Kubernetes cluster using Helm charts. Additionally, the deployment process includes Slack alerts to notify about the status of the deployment.
