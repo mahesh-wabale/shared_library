@@ -13,6 +13,7 @@ This project demonstrates how to deploy two applications, one Java and one Pytho
 - Slack workspace with a channel for alerts
 - Slack webhook URL
 - DockerHub account
+- Creare credentials jenkins dashboard->manage jenkins->credentials create credentials of Dockerhub,slack,kubeconfig credentials
 
 ## Repository Structure
 java application is testhello and python is python-app
